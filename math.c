@@ -69,3 +69,54 @@ void rmsnorm(float* out, float* x, float* weight, int size) {
         out[i] = weight[i] * (ss * x[i]);
     }
 }
+
+// RoPE: Rotary Positional Embedding
+void rope(float* q, float* k, int pos, int head_size, int dim, int kv_dim) {
+    for (int i = 0; i < dim; i += 2) {
+        int head_dim = i % head_size;
+        
+        // Calculate the frequency (theta)
+        float freq = 1.0f / powf(10000.0f, (float)head_dim / (float)head_size);
+        float val = (float)pos * freq;
+        float fcr = cosf(val);
+        float fci = sinf(val);
+
+        // Rotate Query (Q)
+        float q0 = q[i];
+        float q1 = q[i + 1];
+        q[i]     = q0 * fcr - q1 * fci;
+        q[i + 1] = q0 * fci + q1 * fcr;
+
+        // Rotate Key (K) - Only up to kv_dim since GQA has fewer key heads!
+        if (i < kv_dim) {
+            float k0 = k[i];
+            float k1 = k[i + 1];
+            k[i]     = k0 * fcr - k1 * fci;
+            k[i + 1] = k0 * fci + k1 * fcr;
+        }
+    }
+
+}
+
+// Softmax: Turns raw scores into probabilities (0.0 to 1.0)
+void softmax(float* x, int size) {
+    // 1. Find max value for mathematical stability
+    float max_val = x[0];
+    for (int i = 1; i < size; i++) {
+        if (x[i] > max_val) {
+            max_val = x[i];
+        }
+    }
+    
+    // 2. Calculate the exponential of each element and the sum
+    float sum = 0.0f;
+    for (int i = 0; i < size; i++) {
+        x[i] = expf(x[i] - max_val);
+        sum += x[i];
+    }
+    
+    // 3. Normalize so they all sum to 1.0
+    for (int i = 0; i < size; i++) {
+        x[i] /= sum;
+    }
+}

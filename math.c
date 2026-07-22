@@ -1,5 +1,6 @@
 #include "math.h"
 #include <math.h>
+#include <stdlib.h>
 
 // Matrix Multiplication: out = w * x
 void matmul(float* out, float* x, float* w, int n, int d) {
@@ -119,4 +120,48 @@ void softmax(float* x, int size) {
     for (int i = 0; i < size; i++) {
         x[i] /= sum;
     }
+}
+
+// Argmax: Returns the index of the highest value (Greedy Decoding)
+int argmax(float* logits, int size) {
+    int max_i = 0;
+    float max_val = logits[0];
+    for (int i = 1; i < size; i++) {
+        if (logits[i] > max_val) {
+            max_val = logits[i];
+            max_i = i;
+        }
+    }
+    return max_i;
+}
+
+// Temperature Sampling: Picks a token probabilistically
+int sample_logits(float* logits, int size, float temperature) {
+    // If temperature is 0, fallback to deterministic greedy behavior
+    if (temperature == 0.0f) {
+        return argmax(logits, size);
+    }
+    
+    // 1. Apply temperature scaling
+    for (int i = 0; i < size; i++) {
+        logits[i] /= temperature;
+    }
+    
+    // 2. Convert to percentages (probabilities that sum to 1.0)
+    softmax(logits, size);
+    
+    // 3. Spin the roulette wheel! Generate a random fraction between 0.0 and 1.0
+    float r = (float)rand() / (float)RAND_MAX;
+    
+    // 4. Find where the random number lands on the probability distribution
+    float cdf = 0.0f; // Cumulative Distribution Function
+    for (int i = 0; i < size; i++) {
+        cdf += logits[i];
+        if (r < cdf) {
+            return i;
+        }
+    }
+    
+    // Fallback in case of tiny floating-point rounding errors
+    return size - 1; 
 }

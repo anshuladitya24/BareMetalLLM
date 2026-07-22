@@ -4,7 +4,7 @@ CFLAGS = -O3 -Wall -Wextra
 LDFLAGS = -lm
 
 # Files
-SRCS = main.c loader.c math.c
+SRCS = main.c loader.c math.c tokenizer.c
 OBJS = $(SRCS:.c=.o)
 TARGET = engine
 
